@@ -6,6 +6,9 @@ class Pool {
   #clients = [];
   #pool = [];
   #queue = [];
+  #queueStart = 0;
+  #pending = 0;
+
   constructor() {}
 
   add(client) {
@@ -18,6 +21,16 @@ class Pool {
     return Math.random().toString(36).substring(2, 5);
   }
 
+  #resolveFromQueue() {
+    if (this.#queue.length > this.#queueStart) {
+      this.#queue[this.#queueStart++]();
+      if (this.#queueStart > 1000) {
+        this.#queue = this.#queue.slice(this.#queueStart);
+        this.#queueStart = 0;
+      }
+    }
+  }
+
   async do(traceId = this.#genTraceId(), method, ...args) {
     const client = this.#pool.pop();
     if (client != null) {
@@ -28,13 +41,15 @@ class Pool {
       });
 
       this.#pool.push(client);
-      if (this.#queue.length) this.#queue.shift()();
+      this.#resolveFromQueue();
       return res;
     }
 
-    log(traceId, `no clients, pending ${this.#queue.length + 1}`);
+    this.#pending++;
+    log(traceId, `no clients, pending ${this.#pending}`);
     await new Promise((res) => this.#queue.push(res));
-    log(traceId, `client ready, pending ${this.#queue.length}`);
+    this.#pending--;
+    log(traceId, `client ready, pending ${this.#pending}`);
     return this.do(traceId, method, ...args);
   }
 }
@@ -56,7 +71,9 @@ async function test() {
     .map((_, i) => new Test(`client${i + 1}`));
   clients.forEach((client) => pool.add(client));
 
-  const tasks = new Array(5).fill(pool.do.bind(pool, undefined, "sleep", 1000));
+  const tasks = new Array(50).fill(
+    pool.do.bind(pool, undefined, "sleep", 1000)
+  );
 
   await Promise.all(tasks.map((task) => task()));
   log(`tasks: ${tasks.length}`, `clients: ${clients.length}`);
