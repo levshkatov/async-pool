@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events'
+import { performance } from 'node:perf_hooks';
 
 class Task {
   constructor(name, metadata) {
@@ -31,7 +32,7 @@ class Pool extends EventEmitter {
 }
 
 class Worker extends EventEmitter {
-  #concurrency = 3;
+  #concurrency = 10;
   #count = 0;
 
   constructor(pool) {
@@ -51,11 +52,8 @@ class Worker extends EventEmitter {
 
   // this method should be overriden while creating new worker
   async handler(task) {
-    if (task.name % 2 === 0) {
-      throw new Error(task.name)
-    }
+    for (let i = 0; i < 100000000; i++) {}
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
     return task.name;
   }
 
@@ -80,7 +78,9 @@ class Worker extends EventEmitter {
     const task = this.pool.pop();
 
     if (!task) {
-      this.emit('idle');
+      if (this.#count === 0) {
+        this.emit('idle');
+      }
       return;
     }
 
@@ -91,8 +91,14 @@ class Worker extends EventEmitter {
 const pool = new Pool();
 const worker = new Worker(pool);
 
+const start = performance.now();
 worker.on('result', (data) => console.log('complete', data));
 worker.on('error', (data) => console.log('error', data));
-worker.on('idle', (data) => console.log('idle', data));
+worker.on('idle', (data) => {
+  console.log('idle', data);
+  const end = performance.now();
+  console.log(`Time taken to execute add function is ${end - start}ms.`);
+});
 
-[1, 2, 3, 4, 5, 6, 7].forEach(v => pool.add(v))
+Array.from({ length: 1000 }).forEach((v, i) => pool.add(i))
+
