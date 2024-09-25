@@ -42,19 +42,29 @@ class Worker {
   #channel = undefined;
 
   #timeout = 3000;
-  #idle = true;
+  #concurrency = 5;
+  #count = 0;
 
-  constructor(file, { name, timeout = 3000 }) {
+  constructor(file, { name, concurrency = 5, timeout = 3000 }) {
     this.name = name;
     this.#channel = new MessageChannel();
     this.#worker = new NodeWorker(file, { name });
     this.#timeout = timeout;
+    this.#concurrency = concurrency;
 
     this.#worker.postMessage({ port: this.#channel.port2 }, [this.#channel.port2])
   }
 
+  #inc() {
+    this.#count += 1;
+  }
+
+  #dec() {
+    this.#count -= 1;
+  }
+
   isIdle() {
-    return this.#idle;
+    return this.#count < this.#concurrency;
   }
 
   stop() {
@@ -66,7 +76,7 @@ class Worker {
    * @argument {Task} task
    */
   run(task) {
-    this.#idle = false;
+    this.#inc();
 
     const { promise, resolve, reject } = Promise.withResolvers();
 
@@ -85,7 +95,7 @@ class Worker {
 
 
     return promise.finally(() => {
-      this.#idle = true;
+      this.#dec();
       this.#channel.port1.off('message', handleMessage)
       this.#channel.port1.off('messageerror', handleMessageError)
     });
