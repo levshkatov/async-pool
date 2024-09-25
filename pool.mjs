@@ -7,7 +7,7 @@ class Pool {
   #queue = new DoublyLinkedList();
   #pending = 0;
 
-  constructor() {}
+  constructor() { }
 
   add(client) {
     if (this.#clients.includes(client)) return;
@@ -55,7 +55,7 @@ class Pool {
 }
 
 function log(...args) {
-  console.log(new Date().toISOString().split("T")[1], ...args);
+  // console.log(new Date().toISOString().split("T")[1], ...args);
 }
 
 class Test {
@@ -63,13 +63,30 @@ class Test {
     this.name = name;
   }
 
-  async sleep() {
-    for (let i = 0; i < 100000000; i++) {}
+  async sleep(name) {
+    // for (let i = 0; i < 100000000; i++) {}
 
-    return this.name;
+    // return this.name;
+    //
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
 
+    return res.json();
   }
 }
+
+const POKEMON_LIST = [
+  'pikachu',
+  "charmander",
+  "charmeleon",
+  "charizard",
+  "sunkern",
+  "sunflora",
+  "tropius",
+  "helioptile",
+  "heliolisk",
+  "houndoom-mega",
+  "charizard-gmax"
+]
 
 async function test() {
   const pool = new Pool();
@@ -78,13 +95,13 @@ async function test() {
     .map((_, i) => new Test(`client${i + 1}`));
   clients.forEach((client) => pool.add(client));
 
-  const tasks = new Array(1000).fill(pool.do.bind(pool, "sleep", 1000));
+  const tasks = Array.from({ length: 1000 }).map((v, i) => pool.do.bind(pool, 'sleep', POKEMON_LIST[i % POKEMON_LIST.length]))
 
   const start = performance.now();
   await Promise.all(tasks.map((task) => task()));
   log(`tasks: ${tasks.length}`, `clients: ${clients.length}`);
   const end = performance.now();
-  console.log(`Time taken to execute add function is ${end - start}ms.`);
+  console.log(`[AUTHOR] ${end - start}ms.`);
 }
 
 await test();

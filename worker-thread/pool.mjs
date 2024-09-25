@@ -57,6 +57,11 @@ class Worker {
     return this.#idle;
   }
 
+  stop() {
+    this.#worker.unref();
+    return this.#worker.terminate();
+  }
+
   /**
    * @argument {Task} task
    */
@@ -151,6 +156,10 @@ class WorkerPool extends EventEmitter {
     this.#run(task);
   }
 
+  async stop() {
+    return Promise.all(this.#workerPool.map(w => w.stop()))
+  }
+
   #getIdleWorker() {
     return this.#workerPool.find(w => w.isIdle());
   }
@@ -166,12 +175,27 @@ const pool = new Pool();
 const worker = new WorkerPool(pool, { workerFile: path.resolve(import.meta.dirname, './worker.mjs') });
 
 const start = performance.now();
-worker.on('result', (data) => console.log('complete', data));
-worker.on('error', (data) => console.log('error', data));
-worker.on('idle', (data) => {
-  console.log('idle', data)
+// worker.on('result', (data) => console.log('complete', data));
+// worker.on('error', (data) => console.log('error', data));
+worker.on('idle', () => {
   const end = performance.now();
-  console.log(`Time taken to execute add function is ${end - start}ms.`);
+  console.log(`[WORKER] ${end - start}ms.`);
+
+  worker.stop()
 });
 
-Array.from({ length: 1000 }).forEach((v, i) => pool.add(i))
+const POKEMON_LIST = [
+  'pikachu',
+  "charmander",
+  "charmeleon",
+  "charizard",
+  "sunkern",
+  "sunflora",
+  "tropius",
+  "helioptile",
+  "heliolisk",
+  "houndoom-mega",
+  "charizard-gmax"
+]
+
+Array.from({ length: 1000 }).forEach((v, i) => pool.add(POKEMON_LIST[i % POKEMON_LIST.length]))

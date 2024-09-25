@@ -14,13 +14,15 @@ parentPort.once('message', (event) => {
 });
 
 function main() {
-  let abortController = new AbortController();
+  async function getPokemon(task) {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${task.name}`);
+    port.postMessage(await res.json())
+  }
 
-  port.on('message', () => {
+  port.on('message', (event) => {
+    // for (let i = 0; i < 100000000; i++) {}
 
-    for (let i = 0; i < 100000000; i++) {}
-
-    port.postMessage(Math.random());
+    getPokemon(event);
   });
 
   port.on('messageerror', () => {
@@ -30,5 +32,4 @@ function main() {
   port.on('close', () => {
     // stop pending fetch
   })
-
 }

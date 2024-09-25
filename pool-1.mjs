@@ -52,9 +52,11 @@ class Worker extends EventEmitter {
 
   // this method should be overriden while creating new worker
   async handler(task) {
-    for (let i = 0; i < 100000000; i++) {}
+    // for (let i = 0; i < 100000000; i++) {}
 
-    return task.name;
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${task.name}`);
+
+    return res.json();
   }
 
   async run(task) {
@@ -92,13 +94,25 @@ const pool = new Pool();
 const worker = new Worker(pool);
 
 const start = performance.now();
-worker.on('result', (data) => console.log('complete', data));
-worker.on('error', (data) => console.log('error', data));
+// worker.on('result', (data) => console.log('complete', data));
+// worker.on('error', (data) => console.log('error', data));
 worker.on('idle', (data) => {
-  console.log('idle', data);
   const end = performance.now();
-  console.log(`Time taken to execute add function is ${end - start}ms.`);
+  console.log(`[EVENT-DRIVEN] ${end - start}ms.`);
 });
 
-Array.from({ length: 1000 }).forEach((v, i) => pool.add(i))
+const POKEMON_LIST = [
+  'pikachu',
+  "charmander",
+  "charmeleon",
+  "charizard",
+  "sunkern",
+  "sunflora",
+  "tropius",
+  "helioptile",
+  "heliolisk",
+  "houndoom-mega",
+  "charizard-gmax"
+]
 
+Array.from({ length: 1000 }).forEach((v, i) => pool.add(POKEMON_LIST[i % POKEMON_LIST.length]))
